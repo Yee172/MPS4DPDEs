@@ -1,13 +1,11 @@
+var extend_ratio = 12;
 var N = 100;
 var h = 1 / N;
+var extend_length = h * extend_ratio;
 
-var SWITCH_voxel = false;
-
-var data = [ generate_points() ];
+var data = [ generate_near_boundary_points() ];
 
 var layout = initialize();
-
-var memorized_xy = [0, 0];
 
 var config =
 {
@@ -109,7 +107,7 @@ function get_ellipse( x, y )
     return ellipse_data;
 }
 
-function generate_points()
+function generate_near_boundary_points()
 {
     const d2b_threshold = 0.25;
     const d2b = h * d2b_threshold; // distance to the boundary
@@ -149,6 +147,39 @@ function generate_points()
     return point_data;
 }
 
+function generate_all_points()
+{
+    const d2b_threshold = 0.25;
+    const d2b = h * d2b_threshold; // distance to the boundary
+    const start_value = d2b;
+    const end_value = 1 - ( 1 + Math.sqrt( 2 ) ) * d2b;
+    const d = ( end_value - start_value ) / N;
+    var x = [];
+    var y = [];
+    x.push(start_value);
+    y.push(start_value);
+    for( var i = 0; i <= N; ++i )
+    {
+        for ( var j = 0; i + j <= N; ++j )
+        {
+            x.push( start_value + i * d );
+            y.push( start_value + j * d );
+        }
+    }
+    const point_data =
+    {
+        mode: "markers",
+        marker:
+        {
+            size: 4
+        },
+        hoverinfo: 'text',
+        x: x,
+        y: y
+    };
+    return point_data;
+}
+
 function clean_handler( data )
 {
     while ( self.data.length > 1 )
@@ -168,12 +199,96 @@ function show_handler( data )
         var x = data.points[ i ].x;
         var y = data.points[ i ].y;
         var index = data.points[ i ].pointNumber;
-        if ( index < 3 * N )
-        {
-            clean_handler( data );
-            Plotly.addTraces( myPlot, get_ellipse( x, y ) );
-        }
+        clean_handler( data );
+        Plotly.addTraces( myPlot, get_ellipse( x, y ) );
     }
+}
+
+function get_domain()
+{
+    const domain_parts =
+    [
+        {
+            type: 'path',
+            xref: 'x',
+            yref: 'y',
+            path: 'M 0 0 L 0 1 L 1 0 Z',
+            opacity: 0.2,
+            fillcolor: 'gray',
+        },
+        {
+            type: 'path',
+            xref: 'x',
+            yref: 'y',
+            path: 'M 0 0 L 0 1 L 1 0 Z',
+            line:
+            {
+                color: 'black',
+                width: 0.5
+            }
+        },
+        {
+            type: 'rect',
+            xref: 'x',
+            yref: 'y',
+            x0: - extend_length,
+            y0: - extend_length,
+            x1: 1 + extend_length,
+            y1: 1 + extend_length,
+            line:
+            {
+                color: 'black',
+                width: 2
+            }
+        }
+    ];
+    return domain_parts;      
+}
+
+function get_voxels()
+{
+    var voxels = [];
+    for( var i = 1; i < N + extend_ratio * 2; ++i )
+    {
+        voxels.push(
+            {
+                type: 'line',
+                xref: 'x',
+                yref: 'y',
+                x0: - extend_length + i * h,
+                y0: - extend_length,
+                x1: - extend_length + i * h,
+                y1: 1 + extend_length,
+                opacity: 0.5,
+                line:
+                {
+                    color: 'gray',
+                    width: 1
+                }
+            }
+        );
+    }
+    for( var i = 1; i < N + extend_ratio * 2; ++i )
+    {
+        voxels.push(
+            {
+                type: 'line',
+                xref: 'x',
+                yref: 'y',
+                x0: - extend_length,
+                y0: - extend_length + i * h,
+                x1: 1 + extend_length,
+                y1: - extend_length + i * h,
+                opacity: 0.5,
+                line:
+                {
+                    color: 'gray',
+                    width: 1
+                }
+            }
+        );
+    }
+    return voxels;
 }
 
 myPlot.on( 'plotly_hover', show_handler );
@@ -182,8 +297,6 @@ myPlot.on( 'plotly_click', show_handler );
 
 function initialize()
 {
-    const extend_ratio = 12;
-    const extend_length = h * extend_ratio;
     var layout =
     {
         title: "<span style='color:#0FFF50'>&#9673;</span>Green: Searching Ellipse<br><span style='color:#500FFF'>&#9673;</span>Blue: Near Boundary Interior Point",
@@ -212,40 +325,31 @@ function initialize()
             ticks: '',
             showticklabels: false
         },
-        shapes:
+        shapes: get_domain(),
+        updatemenus:
         [
             {
-                type: 'path',
-                xref: 'x',
-                yref: 'y',
-                path: 'M 0 0 L 0 1 L 1 0 Z',
-                opacity: 0.2,
-                fillcolor: 'gray',
-            },
-            {
-                type: 'path',
-                xref: 'x',
-                yref: 'y',
-                path: 'M 0 0 L 0 1 L 1 0 Z',
-                line:
-                {
-                    color: 'black',
-                    width: 0.5
-                }
-            },
-            {
-                type: 'rect',
-                xref: 'x',
-                yref: 'y',
-                x0: - extend_length,
-                y0: - extend_length,
-                x1: 1 + extend_length,
-                y1: 1 + extend_length,
-                line:
-                {
-                    color: 'black',
-                    width: 2
-                }
+                buttons:
+                [
+                    {
+                        args: [ { shapes: get_domain() }],
+                        label: 'Hide Voxels',
+                        method: 'relayout'
+                    },
+                    {
+                        args: [ { shapes: get_domain().concat( get_voxels() ) } ],
+                        label: 'Show Voxels',
+                        method: 'relayout'
+                    }
+                ],
+                direction: 'bottom',
+                showactive: true,
+                type: 'dropdown',
+                x: 0,
+                xanchor: 'left',
+                y: 0.90,
+                yanchor: 'top',
+                active: 0
             }
         ],
         height: 1000,
@@ -257,48 +361,5 @@ function initialize()
             b: 0
         }
     };
-    if ( SWITCH_voxel )
-    {
-        for( var i = 1; i < N + extend_ratio * 2; i++ )
-        {
-            layout.shapes.push(
-                {
-                    type: 'line',
-                    xref: 'x',
-                    yref: 'y',
-                    x0: - extend_length + i * h,
-                    y0: - extend_length,
-                    x1: - extend_length + i * h,
-                    y1: 1 + extend_length,
-                    opacity: 0.5,
-                    line:
-                    {
-                        color: 'gray',
-                        width: 1
-                    }
-                }
-            );
-        }
-        for( var i = 1; i < N + extend_ratio * 2; i++ )
-        {
-            layout.shapes.push(
-                {
-                    type: 'line',
-                    xref: 'x',
-                    yref: 'y',
-                    x0: - extend_length,
-                    y0: - extend_length + i * h,
-                    x1: 1 + extend_length,
-                    y1: - extend_length + i * h,
-                    opacity: 0.5,
-                    line:
-                    {
-                        color: 'gray',
-                        width: 1
-                    }
-                }
-            );
-        }
-    }
     return layout;
 }
