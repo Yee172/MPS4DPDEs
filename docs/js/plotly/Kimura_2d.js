@@ -347,7 +347,7 @@ function initialize()
                 type: 'dropdown',
                 x: 0,
                 xanchor: 'left',
-                y: 0.90,
+                y: 1,
                 yanchor: 'top',
                 active: 0
             }
