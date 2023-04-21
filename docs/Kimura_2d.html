@@ -1,9 +1,38 @@
 <head>
     <!-- Load plotly.js into the DOM -->
     <script src='https://cdn.plot.ly/plotly-2.12.1.min.js'></script>
+    <link rel="stylesheet" href="css/dropdown_button.css">
 </head>
 
 <body>
     <div id='web_Kimura_2d'></div>
+    <div id='buttons'>
+        <div class='dropdown'>
+            <div class='select'>
+                <span class='selected'>N = 100</span>
+                <div class='caret'></div>
+            </div>
+            <ul class='menu'>
+                <li onclick="javascript:change_level(10);">N = 10</li>
+                <li onclick="javascript:change_level(20);">N = 20</li>
+                <li onclick="javascript:change_level(50);">N = 50</li>
+                <li onclick="javascript:change_level(100);" class='active'>N = 100</li>
+                <li onclick="javascript:change_level(200);">N = 200</li>
+                <li onclick="javascript:change_level(500);">N = 500</li>
+                <li onclick="javascript:change_level(1000);">N = 1000</li>
+            </ul>
+        </div>
+        <div class='dropdown'>
+            <div class='select'>
+                <span class='selected'>Near boundary only</span>
+                <div class='caret'></div>
+            </div>
+            <ul class='menu'>
+                <li onclick="javascript:change_point_type(false);" class='active'>Near boundary only</li>
+                <li onclick="javascript:change_point_type(true);">All points</li>
+            </ul>
+        </div>
+    </div>
+    <script src='js/dropdown_button.js'></script>
     <script src='js/plotly/Kimura_2d.js'></script>
 </body>

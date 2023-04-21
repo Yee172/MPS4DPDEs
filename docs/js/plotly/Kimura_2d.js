@@ -1,11 +1,6 @@
-var extend_ratio = 12;
-var N = 100;
-var h = 1 / N;
-var extend_length = h * extend_ratio;
+var layout, data, frames;
 
-var data = [ generate_near_boundary_points() ];
-
-var layout = initialize();
+var SWITCH_SHOW_ALL_POINTS = false;
 
 var config =
 {
@@ -23,9 +18,35 @@ var config =
     ]
 };
 
-var myPlot = document.getElementById( 'web_Kimura_2d' );
+var graph_div = document.getElementById( 'web_Kimura_2d' );
 
-Plotly.newPlot( myPlot, data, layout, config );
+change_level( 100 );
+
+function change_level( N )
+{
+    layout = initialize( N );
+    if ( SWITCH_SHOW_ALL_POINTS )
+    {
+        data = [ generate_all_points( layout.extra_info.N ) ];
+    }
+    else
+    {
+        data = [ generate_near_boundary_points( layout.extra_info.N ) ];
+    }
+    Plotly.newPlot( graph_div, data, layout, config );
+    graph_div.on( 'plotly_hover', show_handler );
+    graph_div.on( 'plotly_click', show_handler );
+    // graph_div.on( 'plotly_unhover', clean_handler );
+}
+
+function change_point_type( flag )
+{
+    if ( flag != SWITCH_SHOW_ALL_POINTS )
+    {
+        SWITCH_SHOW_ALL_POINTS = flag;
+        change_level( layout.extra_info.N );
+    }
+}
 
 function f( a11, a22, theta )
 {
@@ -63,7 +84,7 @@ function get_radius_of_inscribed_circle( a11, a22 )
     return Math.sqrt( radius_square );
 }
 
-function get_ellipse( x, y )
+function get_ellipse( x, y, h )
 {
     var ellipse_x = [];
     var ellipse_y = [];
@@ -107,12 +128,14 @@ function get_ellipse( x, y )
     return ellipse_data;
 }
 
-function generate_near_boundary_points()
+function generate_near_boundary_points( N )
 {
+    const h = 1 / N;
     const d2b_threshold = 0.25;
     const d2b = h * d2b_threshold; // distance to the boundary
     const start_value = d2b;
     const end_value = 1 - ( 1 + Math.sqrt( 2 ) ) * d2b;
+    N = Math.min( 200, N );
     const d = ( end_value - start_value ) / N;
     var x = [];
     var y = [];
@@ -147,12 +170,14 @@ function generate_near_boundary_points()
     return point_data;
 }
 
-function generate_all_points()
+function generate_all_points( N )
 {
+    const h = 1 / N;
     const d2b_threshold = 0.25;
     const d2b = h * d2b_threshold; // distance to the boundary
     const start_value = d2b;
     const end_value = 1 - ( 1 + Math.sqrt( 2 ) ) * d2b;
+    N = Math.min( 50, N );
     const d = ( end_value - start_value ) / N;
     var x = [];
     var y = [];
@@ -184,7 +209,7 @@ function clean_handler( data )
 {
     while ( self.data.length > 1 )
     {
-        Plotly.deleteTraces( myPlot, 1 );
+        Plotly.deleteTraces( graph_div, 1 );
     }
 }
 
@@ -200,11 +225,11 @@ function show_handler( data )
         var y = data.points[ i ].y;
         var index = data.points[ i ].pointNumber;
         clean_handler( data );
-        Plotly.addTraces( myPlot, get_ellipse( x, y ) );
+        Plotly.addTraces( graph_div, get_ellipse( x, y, layout.extra_info.h ) );
     }
 }
 
-function get_domain()
+function get_domain( extend_length )
 {
     const domain_parts =
     [
@@ -245,8 +270,10 @@ function get_domain()
     return domain_parts;      
 }
 
-function get_voxels()
+function get_voxels( N, extend_ratio )
 {
+    const h = 1 / N;
+    const extend_length = h * extend_ratio;
     var voxels = [];
     for( var i = 1; i < N + extend_ratio * 2; ++i )
     {
@@ -291,15 +318,31 @@ function get_voxels()
     return voxels;
 }
 
-myPlot.on( 'plotly_hover', show_handler );
-myPlot.on( 'plotly_click', show_handler );
-// myPlot.on( 'plotly_unhover', clean_handler );
-
-function initialize()
+function get_title( N )
 {
+    const h = 1 / N;
+    var title = "<span style='color:#0FFF50'>&#9673;</span>Green: Searching Ellipse<br><span style='color:#500FFF'>&#9673;</span>Blue: ";
+    if ( SWITCH_SHOW_ALL_POINTS )
+    {
+        title += 'Interior Point<br>';
+    }
+    else
+    {
+        title += 'Near Boundary Interior Point<br>';
+    }
+    title += 'N = ' + N + ', ' + 'h = ' + h.toFixed(5);
+    return title;
+}
+
+function initialize( N )
+{
+    var extend_ratio = 12;
+    var h = 1 / N;
+    var extend_length = h * extend_ratio;
+
     var layout =
     {
-        title: "<span style='color:#0FFF50'>&#9673;</span>Green: Searching Ellipse<br><span style='color:#500FFF'>&#9673;</span>Blue: Near Boundary Interior Point",
+        title: get_title( N ),
         hovermode: 'closest',
         xaxis:
         {
@@ -325,19 +368,19 @@ function initialize()
             ticks: '',
             showticklabels: false
         },
-        shapes: get_domain(),
+        shapes: get_domain( extend_length ),
         updatemenus:
         [
             {
                 buttons:
                 [
                     {
-                        args: [ { shapes: get_domain() }],
+                        args: [ { shapes: get_domain( extend_length ) }],
                         label: 'Hide Voxels',
                         method: 'relayout'
                     },
                     {
-                        args: [ { shapes: get_domain().concat( get_voxels() ) } ],
+                        args: [ { shapes: get_domain( extend_length ).concat( get_voxels( N, extend_ratio ) ) } ],
                         label: 'Show Voxels',
                         method: 'relayout'
                     }
@@ -359,6 +402,13 @@ function initialize()
         margin:
         {
             b: 0
+        },
+        extra_info:
+        {
+            extend_ratio: extend_ratio,
+            N: N,
+            h: h,
+            extend_length: extend_length
         }
     };
     return layout;
